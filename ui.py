@@ -15,7 +15,7 @@ class TreeNode:
 class LaptopSearchApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.df = None
+        self.df = pd.read_csv('laptops.csv', encoding='latin-1')  # Preload the CSV file
         self.initUI()
     
     def initUI(self):
@@ -23,18 +23,10 @@ class LaptopSearchApp(QMainWindow):
         
         # Layouts
         main_layout = QVBoxLayout()
-        file_layout = QHBoxLayout()
         search_layout = QHBoxLayout()
         delete_layout = QHBoxLayout()
         bfs_layout = QHBoxLayout()
         results_layout = QVBoxLayout()
-        
-        # File selection
-        self.file_label = QLabel('No file selected')
-        self.file_btn = QPushButton('Select CSV File')
-        self.file_btn.clicked.connect(self.select_file)
-        file_layout.addWidget(self.file_label)
-        file_layout.addWidget(self.file_btn)
         
         # Laptop search
         self.search_input = QLineEdit()
@@ -45,11 +37,8 @@ class LaptopSearchApp(QMainWindow):
         search_layout.addWidget(self.search_btn)
         
         # Laptop delete
-        self.delete_input = QLineEdit()
         self.delete_btn = QPushButton('Delete Laptop')
         self.delete_btn.clicked.connect(self.delete_laptop)
-        delete_layout.addWidget(QLabel('Laptop Name:'))
-        delete_layout.addWidget(self.delete_input)
         delete_layout.addWidget(self.delete_btn)
         
         # BFS button
@@ -63,7 +52,6 @@ class LaptopSearchApp(QMainWindow):
         results_layout.addWidget(self.results_text)
         
         # Adding layouts to main layout
-        main_layout.addLayout(file_layout)
         main_layout.addLayout(search_layout)
         main_layout.addLayout(delete_layout)
         main_layout.addLayout(bfs_layout)
@@ -74,23 +62,7 @@ class LaptopSearchApp(QMainWindow):
         container.setLayout(main_layout)
         self.setCentralWidget(container)
     
-    def select_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, 'Select CSV File', '', 'CSV Files (*.csv)')
-        if file_path:
-            try:
-                self.df = pd.read_csv(file_path, encoding='latin-1')
-                self.file_label.setText(f'Selected: {file_path}')
-                self.results_text.append(f"File '{file_path}' loaded successfully.")
-            except FileNotFoundError:
-                QMessageBox.critical(self, 'Error', f"File '{file_path}' not found.")
-            except UnicodeDecodeError:
-                QMessageBox.critical(self, 'Error', f"Cannot read file '{file_path}' with the correct encoding.")
-    
     def search_laptop(self):
-        if self.df is None:
-            QMessageBox.critical(self, 'Error', 'No file loaded.')
-            return
-        
         self.results_text.clear()  # Clear previous results
         laptop_name = self.search_input.text()
         laptop_info = self.df[self.df[['Product', 'TypeName', 'Company']].isin([laptop_name]).any(axis=1)]
@@ -101,34 +73,22 @@ class LaptopSearchApp(QMainWindow):
             self.results_text.append(f"Laptop Information:\n{laptop_info.to_string(index=False)}")
         
         # Auto-populate the delete_input field with the searched laptop name
-        self.delete_input.setText(laptop_name)
+        self.search_input.setText(laptop_name)
     
     def delete_laptop(self):
-        if self.df is None:
-            QMessageBox.critical(self, 'Error', 'No file loaded.')
-            return
-        
         self.results_text.clear()  # Clear previous results
-        laptop_name = self.delete_input.text()
-        
+        laptop_name = self.search_input.text()
         
         mask = self.df[['Product', 'TypeName', 'Company']].apply(lambda x: x.str.contains(laptop_name, case=False, na=False))
         before_deletion = self.df.shape[0]
         self.df = self.df[~mask.any(axis=1)]
         after_deletion = self.df.shape[0]
         
-        if before_deletion == after_deletion:
-            self.results_text.append(f"Laptop with name '{laptop_name}' not found for deletion.")
         
-        
-        # Clear the delete_input field after deletion
-        self.delete_input.clear()
+        # Clear the search_input field after deletion
+        self.search_input.clear()
     
     def perform_bfs(self):
-        if self.df is None:
-            QMessageBox.critical(self, 'Error', 'No file loaded.')
-            return
-        
         self.results_text.clear()  # Clear previous results
         root = TreeNode("root")
         laptop_nodes = {}
